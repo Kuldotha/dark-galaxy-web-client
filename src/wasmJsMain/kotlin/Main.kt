@@ -16,6 +16,8 @@ import com.interstellargames.darkgalaxy.ui.screens.game.GameScreen
 import chain.ErSession
 import chain.WebChainGateway
 import com.interstellargames.darkgalaxy.core.events.Bus
+import androidx.compose.runtime.DisposableEffect
+import com.interstellargames.darkgalaxy.core.game.GameSystem
 import com.interstellargames.darkgalaxy.core.game.LobbySystem
 import com.interstellargames.darkgalaxy.core.game.SessionSnapshot
 import androidx.compose.ui.Alignment
@@ -83,13 +85,22 @@ private fun App() {
                     onGameStarted = { screen = Screen.Game(it) },
                 )
             }
-            is Screen.Game -> PhoneFrame {
-                GameScreen(
-                    gameId = s.gameId,
-                    onExit = { screen = Screen.Home },
-                    // No finished/results screen on web yet — return to the list when a game ends.
-                    onFinished = { screen = Screen.Home },
-                )
+            is Screen.Game -> {
+                // The shell owns system lifecycles: the shared screen only presents packets,
+                // so the game's poll/intent system must run while the screen is open.
+                DisposableEffect(s.gameId) {
+                    val system = GameSystem(WebChainGateway, Bus.scope, s.gameId)
+                    system.start()
+                    onDispose { system.stop() }
+                }
+                PhoneFrame {
+                    GameScreen(
+                        gameId = s.gameId,
+                        onExit = { screen = Screen.Home },
+                        // No finished/results screen on web yet — return to the list when a game ends.
+                        onFinished = { screen = Screen.Home },
+                    )
+                }
             }
         }
     }
