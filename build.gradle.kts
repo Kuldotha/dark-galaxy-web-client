@@ -35,3 +35,10 @@ kotlin {
         }
     }
 }
+
+// The web PDA lookup calls globalThis.solanaWeb3, defined by the vendored IIFE build that lives
+// beside the code needing it in :core. Merge that into this app's resources so it ships with the
+// distribution instead of having to be copied in by hand.
+tasks.named<ProcessResources>("wasmJsProcessResources") {
+    from("${rootProject.projectDir}/../dark-galaxy-core/src/wasmJsMain/resources")
+}

@@ -16,6 +16,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.CanvasBasedWindow
 import com.interstellargames.darkgalaxy.core.chain.Address
 import com.interstellargames.darkgalaxy.core.chain.Base58
+import com.interstellargames.darkgalaxy.core.chain.findProgramAddress
 
 /**
  * Web entry point.
@@ -57,6 +58,19 @@ private fun Scaffold() {
                 "program ${programId.base58.take(8)}… decodes to ${Base58.decode(programId.base58).size} bytes",
                 color = Cyan,
                 fontSize = 12.sp,
+                fontFamily = FontFamily.Monospace,
+            )
+            // Surfacing the PDA seam on screen: the Karma harness swallows failure messages,
+            // so the page itself is the fastest debugger. Shows the derived address, or the
+            // exception text if the JS interop is broken.
+            val pda = runCatching {
+                findProgramAddress(listOf("reserve".encodeToByteArray()), programId).base58
+            }
+            Text(
+                if (pda.isSuccess) "reserve PDA ${pda.getOrNull()}"
+                else "PDA FAILED: ${pda.exceptionOrNull()?.message ?: pda.exceptionOrNull()}",
+                color = if (pda.isSuccess) Cyan else Color(0xFFFF6B6B),
+                fontSize = 11.sp,
                 fontFamily = FontFamily.Monospace,
             )
             Text(
