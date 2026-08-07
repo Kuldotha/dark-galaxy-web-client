@@ -7,3 +7,4 @@ build/
 # Kotlin/JS resolves npm deps through Gradle; the lockfile under kotlin-js-store IS committed
 # so browser builds are reproducible.
 node_modules/
+local.properties

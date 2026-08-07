@@ -22,3 +22,7 @@ rootProject.name = "DarkGalaxyWeb"
 // :core is the single definition of the wire format, so a program change lands in both at once.
 include(":core")
 project(":core").projectDir = file("../dark-galaxy-core")
+
+// Shared Compose screens — one UI for Android and the browser.
+include(":ui")
+project(":ui").projectDir = file("../dark-galaxy-core/ui")
