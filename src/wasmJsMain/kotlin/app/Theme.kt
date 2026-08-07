@@ -1,8 +1,23 @@
 package app
 
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 
-/** Shared palette — kept close to the Android theme so the two clients read as one game. */
+/** Interim palette for the not-yet-shared game screen. Dies when the game screen moves to :ui
+ *  (whose theme package then takes over). */
 object DG {
     val BgDeep = Color(0xFF05070F)
     val BgPanel = Color(0xFF0A0F1E)
@@ -40,5 +55,20 @@ fun formatDuration(totalSeconds: Int): String {
         totalMinutes >= 60 -> "${h}h ${m}m ${s}s"
         totalSeconds >= 60 -> "${m}m ${s}s"
         else -> "${s}s"
+    }
+}
+
+@Composable
+fun ActionButton(label: String, color: Color, onClick: () -> Unit, enabled: Boolean = true) {
+    Box(
+        Modifier
+            .border(1.dp, if (enabled) color else DG.TextDim, RoundedCornerShape(6.dp))
+            .clickable(enabled = enabled) { onClick() }
+            .widthIn(min = 64.dp)
+            .padding(horizontal = 14.dp, vertical = 8.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(label, color = if (enabled) color else DG.TextDim, fontSize = 12.sp,
+            fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
     }
 }
