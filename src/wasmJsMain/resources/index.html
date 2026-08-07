@@ -12,8 +12,10 @@
 </head>
 <body>
     <canvas id="ComposeTarget"></canvas>
-    <!-- Defines globalThis.solanaWeb3; must precede the wasm bundle. -->
+    <!-- Platform globals — all must precede the wasm bundle. -->
     <script src="vendor/solana-web3.min.js"></script>
+    <script src="vendor/tweetnacl.min.js"></script>
+    <script src="vendor/dg-bridge.js"></script>
     <script src="darkgalaxy.js"></script>
 </body>
 </html>

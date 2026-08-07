@@ -4,6 +4,9 @@ plugins {
     kotlin("multiplatform") version "2.0.21"
     id("org.jetbrains.compose") version "1.7.1"
     id("org.jetbrains.kotlin.plugin.compose") version "2.0.21"
+    // Not applied here — puts AGP on the root classpath (same classloader as the Kotlin
+    // plugin) so the shared :ui module's android target can resolve it.
+    id("com.android.library") version "8.6.0" apply false
 }
 
 // NOTE: Kotlin here is 2.0.21 while the Android app is on 2.0.10 — Compose Multiplatform's web
@@ -31,6 +34,9 @@ kotlin {
                 implementation(compose.material3)
                 implementation(compose.ui)
                 implementation(project(":core"))
+                implementation(project(":ui"))
+                // await() on JS promises + delay() in the confirm/poll loops.
+                implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.9.0")
             }
         }
     }
