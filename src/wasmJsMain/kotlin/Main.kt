@@ -14,6 +14,8 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.CanvasBasedWindow
+import com.interstellargames.darkgalaxy.core.chain.Address
+import com.interstellargames.darkgalaxy.core.chain.Base58
 
 /**
  * Web entry point.
@@ -48,8 +50,17 @@ private fun Scaffold() {
                 fontSize = 28.sp,
                 fontFamily = FontFamily.Monospace,
             )
+            // Proof the shared module really is shared: this address and its decode come from
+            // :core — the same file the Android app links against, running here as Wasm.
+            val programId = Address("A9yqzJhNrrdbgz7DnPKAfpC5W3DiGHwLWds2bwJypNXo")
             Text(
-                "web build — toolchain smoke test",
+                "program ${programId.base58.take(8)}… decodes to ${Base58.decode(programId.base58).size} bytes",
+                color = Cyan,
+                fontSize = 12.sp,
+                fontFamily = FontFamily.Monospace,
+            )
+            Text(
+                "web build — shared :core linked",
                 color = TextMuted,
                 fontSize = 13.sp,
                 fontFamily = FontFamily.Monospace,
