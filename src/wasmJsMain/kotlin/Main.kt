@@ -11,6 +11,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.window.CanvasBasedWindow
+import com.interstellargames.darkgalaxy.ui.screens.finished.FinishedScreen
 import com.interstellargames.darkgalaxy.ui.screens.game.GameScreen
 import com.interstellargames.darkgalaxy.ui.screens.status.StatusScreen
 import chain.ErSession
@@ -45,7 +46,8 @@ private sealed interface Screen {
     data object Home : Screen
     data object Lobby : Screen
     data class Waiting(val gameId: Long) : Screen
-    data class Game(val gameId: Long) : Screen
+    data class Game(val gameId: Long, val artifact: Boolean = false) : Screen
+    data class Finished(val gameId: Long) : Screen
 }
 
 @Composable
@@ -65,7 +67,7 @@ private fun App() {
                 HomeScreen(
                     onOpenGame = { screen = Screen.Game(it) },
                     onOpenStatus = { screen = Screen.Waiting(it) },
-                    onOpenFinished = { /* results screen not on web yet */ },
+                    onOpenFinished = { screen = Screen.Finished(it) },
                     onOpenLobby = { screen = Screen.Lobby },
                     onOpenSettings = { /* no settings on web yet */ },
                 )
@@ -96,9 +98,25 @@ private fun App() {
                 PhoneFrame {
                     GameScreen(
                         gameId = s.gameId,
-                        onExit = { screen = Screen.Home },
-                        // No finished/results screen on web yet — return to the list when a game ends.
-                        onFinished = { screen = Screen.Home },
+                        onExit = { screen = if (s.artifact) Screen.Finished(s.gameId) else Screen.Home },
+                        // The artifact view IS the finished state — routing on it would loop.
+                        onFinished = { if (!s.artifact) screen = Screen.Finished(it) },
+                    )
+                }
+            }
+            is Screen.Finished -> {
+                // The results screen reads the reveal through GameSnapshot, so its system runs here too.
+                DisposableEffect(s.gameId) {
+                    val system = GameSystem(WebChainGateway, Bus.scope, s.gameId)
+                    system.start()
+                    onDispose { system.stop() }
+                }
+                PhoneFrame {
+                    FinishedScreen(
+                        gameId = s.gameId,
+                        onBack = { screen = Screen.Home },
+                        onViewMap = { screen = Screen.Game(it, artifact = true) },
+                        onLeft = { screen = Screen.Home },
                     )
                 }
             }
