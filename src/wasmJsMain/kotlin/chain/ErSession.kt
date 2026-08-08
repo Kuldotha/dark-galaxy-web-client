@@ -21,12 +21,17 @@ import kotlinx.coroutines.delay
  */
 object ErSession {
 
-    private const val SEED_KEY = "dg_seed_hex"
+    private const val SEED_KEY = "dg_seed_hex"           // walletless identity — never destroyed
+    private const val WALLET_SEED_KEY = "dg_wallet_seed" // wallet-derived — re-derivable by signing
+    private const val WALLET_ADDR_KEY = "dg_wallet_addr"
+    private const val MODE_KEY = "dg_mode"               // "" = no choice yet → landing
     private const val CONFIRM_TIMEOUT_MS = 8_000L
 
     private var seedHex: String? = null
 
     var address: String? by mutableStateOf(null)
+        private set
+    var walletAddress: String? by mutableStateOf(Bridge.localGet(WALLET_ADDR_KEY).ifEmpty { null })
         private set
     var authToken: String? by mutableStateOf(null)
         private set
@@ -35,16 +40,63 @@ object ErSession {
 
     val publicKey: Address? get() = address?.let { Address(it) }
     val isReady: Boolean get() = address != null && authToken != null
+    /** True once the player has chosen how to play — false shows the landing. */
+    val hasIdentity: Boolean get() = Bridge.localGet(MODE_KEY).isNotEmpty()
+    val walletSupported: Boolean get() = Bridge.walletAvailable()
 
     fun erUrl(): String = authToken?.let { "${ChainConfig.ER_RPC}?token=$it" } ?: ChainConfig.ER_RPC
     fun erWs(): String = authToken?.let { "${ChainConfig.ER_WS}?token=$it" } ?: ChainConfig.ER_WS
 
-    /** Load-or-mint the identity seed and authenticate to the ER. Safe to call repeatedly. */
+    /** Resume the previously chosen identity. No-op when none exists (landing shows). */
     suspend fun ensure() {
-        if (isReady) return
-        val seed = seedHex ?: Bridge.localGet(SEED_KEY).ifEmpty {
+        if (isReady || !hasIdentity) return
+        when (Bridge.localGet(MODE_KEY)) {
+            "wallet" -> {
+                val stored = Bridge.localGet(WALLET_SEED_KEY)
+                if (stored.isNotEmpty()) authWith(stored) else connectWallet()
+            }
+            else -> enterWalletless()
+        }
+    }
+
+    /** The walletless path: a local random seed IS the account (kept across logouts). */
+    suspend fun enterWalletless() {
+        val seed = Bridge.localGet(SEED_KEY).ifEmpty {
             Bridge.randomSeedHex().also { Bridge.localSet(SEED_KEY, it) }
-        }.also { seedHex = it }
+        }
+        Bridge.localSet(MODE_KEY, "walletless")
+        walletAddress = null
+        authWith(seed)
+    }
+
+    /** The wallet path: sign the session message once; SHA-256 of the signature is the seed —
+     *  the same derivation as Android, so one wallet is one session identity everywhere. */
+    suspend fun connectWallet() {
+        val combined = Bridge.walletSession(ChainConfig.SESSION_KEY_MESSAGE).await<JsString>().toString()
+        val addr = combined.substringBefore('|')
+        val seed = combined.substringAfter('|')
+        Bridge.localSet(MODE_KEY, "wallet")
+        Bridge.localSet(WALLET_SEED_KEY, seed)
+        Bridge.localSet(WALLET_ADDR_KEY, addr)
+        walletAddress = addr
+        authWith(seed)
+    }
+
+    /** Drop the identity CHOICE — the walletless seed survives (it IS that account); the
+     *  wallet-derived seed is discarded (re-derivable by signing again). */
+    fun logout() {
+        Bridge.localSet(MODE_KEY, "")
+        Bridge.localSet(WALLET_SEED_KEY, "")
+        Bridge.localSet(WALLET_ADDR_KEY, "")
+        seedHex = null
+        address = null
+        walletAddress = null
+        authToken = null
+        authError = null
+    }
+
+    private suspend fun authWith(seed: String) {
+        seedHex = seed
         address = Bridge.pubkeyFromSeed(seed)
         try {
             authToken = Bridge.erAuth(ChainConfig.ER_RPC, seed).await<JsString>().toString()

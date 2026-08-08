@@ -14,6 +14,8 @@ private fun jsLocalSet(key: String, value: String): Unit = js("dgBridge.localSet
 private fun jsPubkeyFromSeed(seedHex: String): String = js("dgBridge.pubkeyFromSeed(seedHex)")
 private fun jsNowMs(): String = js("dgBridge.nowMs()")
 private fun jsErAuth(erRpc: String, seedHex: String): Promise<JsString> = js("dgBridge.erAuth(erRpc, seedHex)")
+private fun jsWalletAvailable(): String = js("dgBridge.walletAvailable()")
+private fun jsWalletSession(message: String): Promise<JsString> = js("dgBridge.walletSession(message)")
 private fun jsSignTx(seedHex: String, blockhash: String, ixsJson: String): String =
     js("dgBridge.signTx(seedHex, blockhash, ixsJson)")
 private fun jsRpcAccountData(url: String, pubkey: String): Promise<JsString> =
@@ -32,6 +34,8 @@ object Bridge {
     fun pubkeyFromSeed(seedHex: String): String = jsPubkeyFromSeed(seedHex)
     fun nowSec(): Long = jsNowMs().toDouble().toLong() / 1000
     fun erAuth(erRpc: String, seedHex: String): Promise<JsString> = jsErAuth(erRpc, seedHex)
+    fun walletAvailable(): Boolean = jsWalletAvailable().isNotEmpty()
+    fun walletSession(message: String): Promise<JsString> = jsWalletSession(message)
     fun signTx(seedHex: String, blockhash: String, ixsJson: String): String = jsSignTx(seedHex, blockhash, ixsJson)
     fun rpcAccountData(url: String, pubkey: String): Promise<JsString> = jsRpcAccountData(url, pubkey)
     fun rpcMultiAccountData(url: String, csv: String): Promise<JsString> = jsRpcMultiAccountData(url, csv)

@@ -106,6 +106,26 @@
       return token;
     },
 
+    // ── browser wallet (Phantom-style provider on window.solana) ─────────────
+    walletAvailable() {
+      const p = globalThis.phantom?.solana || globalThis.solana;
+      return p && p.signMessage ? '1' : '';
+    },
+
+    // Connect + sign the session message; the SHA-256 of that signature is the session seed
+    // (identical derivation to the Android wallet flow, so one wallet = one session identity
+    // everywhere). Returns "walletAddressBase58|seedHex".
+    async walletSession(message) {
+      const provider = globalThis.phantom?.solana || globalThis.solana;
+      if (!provider) throw new Error('No wallet extension found');
+      const resp = await provider.connect();
+      const address = (resp.publicKey || provider.publicKey).toString();
+      const signed = await provider.signMessage(new TextEncoder().encode(message), 'utf8');
+      const sig = signed.signature || signed;
+      const digest = await crypto.subtle.digest('SHA-256', sig instanceof Uint8Array ? sig : new Uint8Array(sig));
+      return address + '|' + bytesToHex(new Uint8Array(digest));
+    },
+
     // ── transaction assembly + signing ───────────────────────────────────────
     // ixsJson: [{p: programIdBase58, d: dataHex, k: [{a: base58, s: 0|1, w: 0|1}]}]
     signTx(seedHex, blockhash, ixsJson) {

@@ -13,6 +13,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.window.CanvasBasedWindow
 import com.interstellargames.darkgalaxy.ui.screens.game.GameScreen
+import androidx.compose.runtime.rememberCoroutineScope
+import com.interstellargames.darkgalaxy.ui.screens.connect.ConnectScreen
 import com.interstellargames.darkgalaxy.ui.screens.onboarding.TutorialScreen
 import com.interstellargames.darkgalaxy.ui.screens.onboarding.TutorialSeen
 import com.interstellargames.darkgalaxy.ui.screens.settings.SettingsScreen
@@ -33,6 +35,7 @@ import com.interstellargames.darkgalaxy.ui.screens.lobby.LobbyScreen
 import com.interstellargames.darkgalaxy.ui.theme.BgLetterbox
 import com.interstellargames.darkgalaxy.ui.theme.BorderSubtle
 import com.interstellargames.darkgalaxy.ui.theme.DarkGalaxyTheme
+import kotlinx.coroutines.launch
 
 /**
  * Web entry point — a thin shell: bring the walletless session online, start the shared
@@ -47,6 +50,7 @@ fun main() {
 }
 
 private sealed interface Screen {
+    data object Landing : Screen
     data object Tutorial : Screen
     data object Home : Screen
     data object Lobby : Screen
@@ -58,18 +62,59 @@ private sealed interface Screen {
 @Composable
 private fun App() {
     var screen by remember {
-        mutableStateOf<Screen>(if (TutorialSeen.seen()) Screen.Home else Screen.Tutorial)
+        mutableStateOf<Screen>(
+            when {
+                !ErSession.hasIdentity -> Screen.Landing
+                TutorialSeen.seen() -> Screen.Home
+                else -> Screen.Tutorial
+            }
+        )
+    }
+    val scope = rememberCoroutineScope()
+    var connecting by remember { mutableStateOf(false) }
+    var lobbyStarted by remember { mutableStateOf(false) }
+
+    suspend fun boot() {
+        Bus.await(SessionSnapshot(ErSession.address, ErSession.isReady, ErSession.authError))
+        if (!lobbyStarted) {
+            lobbyStarted = true
+            LobbySystem(WebChainGateway, Bus.scope).start()
+        }
     }
 
+    // A previously chosen identity resumes silently; no choice yet → the landing shows.
     LaunchedEffect(Unit) {
         Bus.await(SessionSnapshot(address = null, ready = false, error = null))
-        try { ErSession.ensure() } catch (_: Throwable) { /* reflected in the snapshot below */ }
-        Bus.await(SessionSnapshot(ErSession.address, ErSession.isReady, ErSession.authError))
-        LobbySystem(WebChainGateway, Bus.scope).start()
+        if (ErSession.hasIdentity) {
+            try { ErSession.ensure() } catch (_: Throwable) { /* reflected in the snapshot */ }
+            boot()
+        }
+    }
+
+    fun enter(via: suspend () -> Unit) {
+        if (connecting) return
+        connecting = true
+        scope.launch {
+            try {
+                via()
+                boot()
+                screen = if (TutorialSeen.seen()) Screen.Home else Screen.Tutorial
+            } catch (_: Throwable) { /* stay on the landing; wallet popups can be dismissed */ }
+            finally { connecting = false }
+        }
     }
 
     DarkGalaxyTheme {
         when (val s = screen) {
+            is Screen.Landing -> PhoneFrame(forcePhone = true) {
+                ConnectScreen(
+                    isConnecting = connecting,
+                    onEnterWalletless = { enter { ErSession.enterWalletless() } },
+                    onConnectWallet = if (ErSession.walletSupported) {
+                        { enter { ErSession.connectWallet() } }
+                    } else null,
+                )
+            }
             is Screen.Tutorial -> PhoneFrame {
                 TutorialScreen(onDone = {
                     TutorialSeen.markSeen()
@@ -78,11 +123,18 @@ private fun App() {
             }
             is Screen.Settings -> PhoneFrame {
                 SettingsScreen(
-                    walletAddress = ErSession.address,
+                    walletAddress = ErSession.walletAddress ?: ErSession.address,
                     toggles = emptyList(),           // notifications are an Android concern
                     onBack = { screen = Screen.Home },
                     onReplayTutorial = { screen = Screen.Tutorial },
-                    onSignOut = null,                // the walletless seed IS the account
+                    onSignOut = {
+                        // Drops the CHOICE, never the walletless seed (that IS the account);
+                        // a wallet identity re-derives by signing again.
+                        ErSession.logout()
+                        lobbyStarted = false
+                        Bus.emit(SessionSnapshot(address = null, ready = false, error = null))
+                        screen = Screen.Landing
+                    },
                 )
             }
             is Screen.Home -> PhoneFrame {
@@ -121,6 +173,7 @@ private fun App() {
                     GameScreen(
                         gameId = s.gameId,
                         onExit = { screen = Screen.Home },
+                        onOpenSettings = { screen = Screen.Settings },
                     )
                 }
             }
@@ -134,14 +187,15 @@ private fun App() {
  * phone browser the frame IS the viewport, so it just fills the screen.
  */
 @Composable
-private fun PhoneFrame(content: @Composable () -> Unit) {
+private fun PhoneFrame(forcePhone: Boolean = false, content: @Composable () -> Unit) {
     BoxWithConstraints(
         Modifier.fillMaxSize().background(BgLetterbox),
         contentAlignment = Alignment.Center,
     ) {
         // Narrow windows get the designed phone strip; wide ones relax to a 1:1 cap —
-        // wider content, but never actually widescreen.
-        val aspect = if (maxWidth >= 700.dp) 1f else 390f / 844f
+        // wider content, but never actually widescreen. The landing keeps the phone shape
+        // everywhere (its art is composed for it).
+        val aspect = if (!forcePhone && maxWidth >= 700.dp) 1f else 390f / 844f
         Box(
             Modifier
                 .aspectRatio(aspect, matchHeightConstraintsFirst = true)
