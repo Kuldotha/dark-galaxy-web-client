@@ -12,6 +12,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.window.CanvasBasedWindow
 import com.interstellargames.darkgalaxy.ui.screens.game.GameScreen
+import com.interstellargames.darkgalaxy.ui.screens.onboarding.TutorialScreen
+import com.interstellargames.darkgalaxy.ui.screens.onboarding.TutorialSeen
+import com.interstellargames.darkgalaxy.ui.screens.settings.SettingsScreen
 import com.interstellargames.darkgalaxy.ui.screens.status.StatusScreen
 import chain.ErSession
 import chain.WebChainGateway
@@ -42,15 +45,19 @@ fun main() {
 }
 
 private sealed interface Screen {
+    data object Tutorial : Screen
     data object Home : Screen
     data object Lobby : Screen
+    data object Settings : Screen
     data class Waiting(val gameId: Long) : Screen
     data class Game(val gameId: Long) : Screen
 }
 
 @Composable
 private fun App() {
-    var screen by remember { mutableStateOf<Screen>(Screen.Home) }
+    var screen by remember {
+        mutableStateOf<Screen>(if (TutorialSeen.seen()) Screen.Home else Screen.Tutorial)
+    }
 
     LaunchedEffect(Unit) {
         Bus.await(SessionSnapshot(address = null, ready = false, error = null))
@@ -61,13 +68,28 @@ private fun App() {
 
     DarkGalaxyTheme {
         when (val s = screen) {
+            is Screen.Tutorial -> PhoneFrame {
+                TutorialScreen(onDone = {
+                    TutorialSeen.markSeen()
+                    screen = Screen.Home
+                })
+            }
+            is Screen.Settings -> PhoneFrame {
+                SettingsScreen(
+                    walletAddress = ErSession.address,
+                    toggles = emptyList(),           // notifications are an Android concern
+                    onBack = { screen = Screen.Home },
+                    onReplayTutorial = { screen = Screen.Tutorial },
+                    onSignOut = null,                // the walletless seed IS the account
+                )
+            }
             is Screen.Home -> PhoneFrame {
                 HomeScreen(
                     onOpenGame = { screen = Screen.Game(it) },
                     onOpenStatus = { screen = Screen.Waiting(it) },
                     onOpenFinished = { screen = Screen.Game(it) },
                     onOpenLobby = { screen = Screen.Lobby },
-                    onOpenSettings = { /* no settings on web yet */ },
+                    onOpenSettings = { screen = Screen.Settings },
                 )
             }
             is Screen.Lobby -> PhoneFrame {
