@@ -145,13 +145,16 @@ private fun GameFrame(content: @Composable () -> Unit) {
 
 @Composable
 private fun PhoneFrame(content: @Composable () -> Unit) {
-    Box(
+    BoxWithConstraints(
         Modifier.fillMaxSize().background(BgLetterbox),
         contentAlignment = Alignment.Center,
     ) {
+        // Narrow windows get the designed phone strip; wide ones relax to a 1:1 cap —
+        // wider content, but never actually widescreen.
+        val aspect = if (maxWidth >= 700.dp) 1f else 390f / 844f
         Box(
             Modifier
-                .aspectRatio(390f / 844f, matchHeightConstraintsFirst = true)
+                .aspectRatio(aspect, matchHeightConstraintsFirst = true)
                 .clipToBounds()   // nothing a screen draws may escape into the letterbox
                 .border(1.dp, BorderSubtle),
         ) {
