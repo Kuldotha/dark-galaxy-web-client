@@ -25,6 +25,7 @@ import com.interstellargames.darkgalaxy.core.game.LobbySystem
 import com.interstellargames.darkgalaxy.core.game.SessionSnapshot
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.unit.dp
 import com.interstellargames.darkgalaxy.ui.screens.home.HomeScreen
 import com.interstellargames.darkgalaxy.ui.screens.lobby.LobbyScreen
@@ -140,6 +141,7 @@ private fun PhoneFrame(content: @Composable () -> Unit) {
         Box(
             Modifier
                 .aspectRatio(390f / 844f, matchHeightConstraintsFirst = true)
+                .clipToBounds()   // nothing a screen draws may escape into the letterbox
                 .border(1.dp, BorderSubtle),
         ) {
             content()
