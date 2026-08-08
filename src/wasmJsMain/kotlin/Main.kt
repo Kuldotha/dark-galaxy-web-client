@@ -117,7 +117,7 @@ private fun App() {
                     system.start()
                     onDispose { system.stop() }
                 }
-                GameFrame {
+                PhoneFrame {
                     GameScreen(
                         gameId = s.gameId,
                         onExit = { screen = Screen.Home },
@@ -133,16 +133,6 @@ private fun App() {
  * phone-proportioned frame: full height, mobile aspect ratio, letterboxed on the sides. On a
  * phone browser the frame IS the viewport, so it just fills the screen.
  */
-/** The game screen goes full-bleed on wide windows (its own layout adapts); narrow windows
- *  keep the phone frame like every other screen. */
-@Composable
-private fun GameFrame(content: @Composable () -> Unit) {
-    BoxWithConstraints(Modifier.fillMaxSize().background(BgLetterbox)) {
-        if (maxWidth < 700.dp) PhoneFrame(content)
-        else Box(Modifier.fillMaxSize().clipToBounds()) { content() }
-    }
-}
-
 @Composable
 private fun PhoneFrame(content: @Composable () -> Unit) {
     BoxWithConstraints(
