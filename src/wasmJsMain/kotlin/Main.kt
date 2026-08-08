@@ -11,8 +11,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.window.CanvasBasedWindow
-import app.WaitingScreen
 import com.interstellargames.darkgalaxy.ui.screens.game.GameScreen
+import com.interstellargames.darkgalaxy.ui.screens.status.StatusScreen
 import chain.ErSession
 import chain.WebChainGateway
 import com.interstellargames.darkgalaxy.core.events.Bus
@@ -79,10 +79,10 @@ private fun App() {
                 )
             }
             is Screen.Waiting -> PhoneFrame {
-                WaitingScreen(
+                StatusScreen(
                     gameId = s.gameId,
                     onBack = { screen = Screen.Home },
-                    onGameStarted = { screen = Screen.Game(it) },
+                    onEnterGame = { screen = Screen.Game(it) },
                 )
             }
             is Screen.Game -> {
