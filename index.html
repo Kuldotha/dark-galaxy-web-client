@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Dark Galaxy</title>
+    <style>
+        html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; background: #05070F; }
+        /* Compose renders into this canvas and manages its own layout, so it just fills the page. */
+        canvas { display: block; outline: none; }
+    </style>
+</head>
+<body>
+    <canvas id="ComposeTarget"></canvas>
+    <!-- Platform globals — all must precede the wasm bundle. -->
+    <script src="vendor/solana-web3.min.js"></script>
+    <script src="vendor/tweetnacl.min.js"></script>
+    <script src="vendor/dg-bridge.js"></script>
+    <script src="darkgalaxy.js"></script>
+</body>
+</html>
